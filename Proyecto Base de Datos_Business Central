@@ -1,0 +1,258 @@
+-- ==================================================================
+-- BASE DE DATOS DE TIENDA (SIMULACION TIPO ERP / BUSINESS CENTRAL)
+-- Script completo, documentado linea por linea.
+-- ==================================================================
+
+
+-- Crear la base de datos y seleccionarla
+-- Crea la base de datos si no existe
+-- Selecciona la base de datos recien creada para trabajar en ella
+CREATE DATABASE IF NOT EXISTS tienda;
+USE tienda;
+
+-- ==================================================================
+-- 1. Tabla CLIENTES
+-- Columnas:
+-- id: identificador unico del cliente (BIGINT AUTO_INCREMENT)
+-- nombre: nombre del cliente
+-- apellidos: apellidos del cliente
+-- email: email de contacto
+-- telefono: telefono del cliente
+-- dni: documento de identidad (alfanumerico)
+-- tipo_cliente: tipo de cliente ('Particular' o 'Empresa')
+-- condiciones_pago: codigo de condiciones de pago
+-- dir_calle, dir_numero, codigo_postal, dir_poblacion, dir_provincia: direccion de envio
+-- dir_calle_facturacion, dir_numero_facturacion, codigo_postal_facturacion, dir_poblacion_facturacion, dir_provincia_facturacion: direccion de facturacion
+-- created_at: Fecha de creacion del registro
+-- updated_at: Fecha de ultima actualizacion
+
+CREATE TABLE clientes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,                  -- ID unico, incrementa automaticamente
+    nombre VARCHAR(255) NOT NULL,                          -- Nombre del cliente
+    apellidos VARCHAR(255) NOT NULL,                       -- Apellidos del cliente
+    email VARCHAR(255) NULL,                               -- Email de contacto
+    telefono VARCHAR(20) NULL,                             -- Telefono (permite caracteres y ceros iniciales)
+    dni VARCHAR(20) NULL,                                  -- Documento de identidad (numeros y letras)
+    tipo_cliente ENUM('Particular','Empresa') NOT NULL DEFAULT 'Particular', -- Tipo de cliente
+    condiciones_pago VARCHAR(20) NULL,                     -- Codigo de condiciones de pago (FK a tabla condiciones_pago)
+    
+    -- Direccion de envio
+    dir_calle VARCHAR(255) NOT NULL,
+    dir_numero VARCHAR(10) NULL,
+    codigo_postal VARCHAR(10) NOT NULL,
+    dir_poblacion VARCHAR(255) NOT NULL,
+    dir_provincia VARCHAR(255) NOT NULL,
+    
+    -- Direccion de facturacion (opcional si es diferente)
+    dir_calle_facturacion VARCHAR(255) NULL,
+    dir_numero_facturacion VARCHAR(10) NULL,
+    codigo_postal_facturacion VARCHAR(10) NULL,
+    dir_poblacion_facturacion VARCHAR(255) NULL,
+    dir_provincia_facturacion VARCHAR(255) NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,                             -- Fecha de creacion automtica
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  -- Fecha de actualizacion automatica
+);
+
+-- ==================================================================
+-- 2. TABLA PRODUCTOS
+-- Columnas:
+-- id: Identificador unico del producto
+-- sku: Codigo unico del producto
+-- nombre: Nombre del producto
+-- descripcion: Descripcion del producto
+-- categoria: Categoria del producto
+-- precio: Precio unitario
+-- stock: Stock disponible
+-- stock_minimo: Stock minimo para alerta
+-- proveedor: Nombre del proveedor
+-- created_at: Fecha de creacion del producto
+-- updated_at: Fecha de actualizacion
+
+CREATE TABLE productos (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,       -- ID unico del producto
+    sku VARCHAR(50) UNIQUE NOT NULL,            -- Codigo SKU unico
+    nombre VARCHAR(255) NOT NULL,               -- Nombre del producto
+    descripcion TEXT NULL,                      -- Descripcion opcional
+    categoria VARCHAR(100) NULL,                -- Categoria
+    precio DECIMAL(10,2) NOT NULL,              -- Precio unitario
+    stock INT NOT NULL DEFAULT 0,               -- Stock actual
+    stock_minimo INT DEFAULT 0,                 -- Stock minimo
+    proveedor VARCHAR(100) NULL,                -- Proveedor
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- automaticamente asigna la fecha y hora actual en el momento de su creacion
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP -- cada vez que el registro se modifica, actualiza automaticamente esta columna con la fecha y hora actual.
+);
+
+-- ==================================================================
+-- 3. TABLA PEDIDOS
+-- Columnas:
+-- id: Identificador unico del pedido
+-- cliente_id: Relacion con cliente (FK)
+-- importe_total: Total del pedido
+-- estado: Estado del pedido ('Pendiente','Enviado','Entregado','Cancelado')
+-- forma_pago: Forma de pago
+-- moneda: Moneda del pedido
+-- usuario_creador: Usuario que creo el pedido
+-- created_at: Fecha de creacion
+-- updated_at: Fecha de actualizacion
+
+CREATE TABLE pedidos (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,                 -- ID unico del pedido
+    cliente_id BIGINT NOT NULL,                           -- ID del cliente que realiza el pedido
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id),     -- Clave foranea a clientes. Cada pedido es atribuido a uno cliente. Uno cliente puede tener uno o mas pedidos.
+    importe_total DECIMAL(10,2) NOT NULL DEFAULT 0,       -- Importe total del pedido
+    estado ENUM('Pendiente','Enviado','Entregado','Cancelado') NOT NULL DEFAULT 'Pendiente',  -- Estado
+    forma_pago ENUM('Efectivo','Tarjeta','Transferencia') DEFAULT 'Efectivo', -- Forma de pago
+    moneda VARCHAR(3) DEFAULT 'EUR',                -- Moneda
+    usuario_creador VARCHAR(50) NULL,               -- Usuario que creo el pedido
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- automaticamente asigna la fecha y hora actual en el momento de su creacion
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP -- cada vez que el registro se modifica, actualiza automaticamente esta columna con la fecha y hora actual.
+);
+
+-- ======================================================
+-- 4. TABLA PRODUCTOS_PEDIDO
+-- Columnas:
+-- pedido_id: ID del pedido (FK)
+-- producto_id: ID del producto (FK)
+-- cantidad: Cantidad del producto en el pedido
+-- precio_unitario: Precio unitario al momento del pedido
+-- descuento: Descuento aplicado
+-- impuesto: Impuesto aplicado
+
+CREATE TABLE productos_pedido (
+    pedido_id BIGINT NOT NULL,                          -- cada producto registrado debe tener un pedido asignado.
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id),     -- asegura que ese pedido exista realmente en la tabla pedidos y protege la integridad de los datos.
+    
+    producto_id BIGINT NOT NULL,                        -- ID del producto asociado al pedido.
+    FOREIGN KEY (producto_id) REFERENCES productos(id), -- asegura que el producto exista en la tabla productos y mantiene la integridad referencial.
+    
+    cantidad INT NOT NULL DEFAULT 1,                    -- Cantidad pedida
+    precio_unitario DECIMAL(10,2) NOT NULL,             -- Precio unitario
+    descuento DECIMAL(5,2) DEFAULT 0,                   -- Descuento (%)
+    impuesto DECIMAL(5,2) DEFAULT 21,                   -- Impuesto (%)
+    
+    PRIMARY KEY (pedido_id, producto_id)                -- Clave primaria compuesta. Declara que la combinacion de pedido_id y producto_id sera unica en la tabla. 
+--Necesitamos evitar duplicados exactos, es decir, que el mismo producto aparezca dos veces en el mismo pedido.
+
+);
+
+-- ==================================================================
+-- 5. TABLA FACTURAS
+-- Columnas:
+-- id: Identificador unico de la factura
+-- cliente_id: Relacion con cliente (FK)
+-- pedido_id: Relacion con pedido (FK opcional)
+-- numero_factura: Numero unico de factura
+-- fecha_emision: Fecha de emision
+-- fecha_vencimiento: Fecha limite de pago
+-- importe_total: Total de la factura
+-- estado: Estado de la factura ('Pendiente','Pagada','Anulada')
+-- forma_pago: Forma de pago
+-- moneda: Moneda de la factura
+-- created_at: Fecha de creacion
+-- updated_at: Fecha de actualizacion
+
+CREATE TABLE facturas (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,                                     -- ID unico de la factura
+    
+    cliente_id BIGINT NOT NULL,                                               -- Cada pedido/factura debe tener un cliente asignado.
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id),                         -- Asegura que ese cliente exista realmente en la tabla clientes, protegiendo la integridad de los datos.
+    
+    pedido_id BIGINT NULL,                                                    -- Pedido relacionado (opcional)
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id),                           -- Asegura que ese pedido exista realmente en la tabla pedidos, protegiendo la integridad de los datos.
+    
+    
+    numero_factura VARCHAR(50) UNIQUE NOT NULL,                               -- Numero unico de factura
+    fecha_emision DATE NOT NULL DEFAULT CURRENT_DATE,                         -- Fecha de emision
+    fecha_vencimiento DATE NULL,                                              -- Fecha limite de pago
+    importe_total DECIMAL(10,2) NOT NULL,                                     -- Total de la factura
+    estado ENUM('Pendiente','Pagada','Anulada') NOT NULL DEFAULT 'Pendiente', -- Estado
+    forma_pago ENUM('Efectivo','Tarjeta','Transferencia') DEFAULT 'Transferencia', -- Forma de pago
+    moneda VARCHAR(3) DEFAULT 'EUR',                                          -- Moneda
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ==================================================================
+-- 6.  TABLA FACTURAS_LINEAS
+-- Columnas:
+-- factura_id: ID de la factura (FK)
+-- producto_id: ID del producto (FK)
+-- descripcion: Descripcion del producto en la factura
+-- cantidad: Cantidad del producto
+-- precio_unitario: Precio unitario
+-- descuento: Descuento aplicado
+-- impuesto: Impuesto aplicado
+
+CREATE TABLE facturas_lineas (
+    factura_id BIGINT NOT NULL,
+    FOREIGN KEY (factura_id) REFERENCES facturas(id),
+    
+    producto_id BIGINT NOT NULL,
+    FOREIGN KEY (producto_id) REFERENCES productos(id),
+    
+    descripcion VARCHAR(255) NULL,                  -- Descripcion del producto en la factura
+    cantidad INT NOT NULL DEFAULT 1,                -- Cantidad
+    precio_unitario DECIMAL(10,2) NOT NULL,         -- Precio unitario
+    descuento DECIMAL(5,2) DEFAULT 0,               -- Descuento (%)
+    impuesto DECIMAL(5,2) DEFAULT 21,               -- Impuesto (%)
+    
+    PRIMARY KEY (factura_id, producto_id)           -- Clave primaria compuesta
+);
+
+-- ======================================================
+-- 7. DATOS DE PRUEBA
+-- ======================================================
+
+-- CLIENTES
+INSERT INTO clientes (nombre, apellidos, email, telefono, dni, tipo_cliente,
+                      dir_calle, dir_numero, codigo_postal, dir_poblacion, dir_provincia)
+VALUES
+('Elena','Gomez','elena@mail.com','654987321','23456789H','Particular','Calle Granada','567','28001','Madrid','Madrid'),
+('Pablo','Hernandez','pablo@mail.com','987654123','87654321J','Empresa','Avenida Valencia','789','08001','Barcelona','Barcelona'),
+('Maria','Rodriguez','maria@mail.com','123456789','34567890K','Particular','Calle Sevilla','234','41001','Sevilla','Sevilla'),
+('Javier','Lopez','javier@mail.com','789123456','23456789L','Empresa','Paseo Zaragoza','456','50001','Zaragoza','Zaragoza');
+
+-- PRODUCTOS
+INSERT INTO productos (sku, nombre, descripcion, categoria, precio, stock, proveedor)
+VALUES
+('SKU001','Libro 1','Una historia emocionante','Literatura',19.99,50,'Editorial A'),
+('SKU002','Libro 2','Un thriller psicologico','Thriller',24.99,30,'Editorial B'),
+('SKU003','Libro 3','Una aventura de ciencia ficcion','Ciencia Ficcion',29.99,20,'Editorial C'),
+('SKU004','Libro 4','Una coleccion de poesia','Poesia',14.99,40,'Editorial D'),
+('SKU005','Libro 5','Una guia practica','Educativo',34.99,25,'Editorial E');
+
+-- PEDIDOS
+INSERT INTO pedidos (cliente_id, importe_total, estado, forma_pago, moneda, usuario_creador)
+VALUES
+(1, 59.97,'Pendiente','Tarjeta','EUR','Usuario1'),
+(2, 74.97,'Pendiente','Transferencia','EUR','Usuario2'),
+(3, 64.98,'Pendiente','Efectivo','EUR','Usuario1'),
+(4, 29.98,'Pendiente','Tarjeta','EUR','Usuario2');
+
+-- PRODUCTOS_PEDIDO
+INSERT INTO productos_pedido (pedido_id, producto_id, cantidad, precio_unitario, descuento, impuesto)
+VALUES
+(1,1,2,19.99,0,21),
+(1,3,1,29.99,0,21),
+(2,2,3,24.99,0,21),
+(3,5,2,34.99,5,21),
+(4,4,2,14.99,0,21);
+
+-- FACTURAS
+INSERT INTO facturas (cliente_id, pedido_id, numero_factura, importe_total, estado, forma_pago)
+VALUES
+(1,1,'FAC-2025-0001',59.97,'Pendiente','Tarjeta'),
+(2,2,'FAC-2025-0002',74.97,'Pendiente','Transferencia');
+
+-- FACTURAS_LINEAS
+INSERT INTO facturas_lineas (factura_id, producto_id, descripcion, cantidad, precio_unitario, descuento, impuesto)
+VALUES
+(1,1,'Libro 1','2',19.99,0,21),
+(1,3,'Libro 3','1',29.99,0,21),
+(2,2,'Libro 2','3',24.99,0,21);
+
+-- ======================================================
+-- FIN DEL SCRIPT COMPLETO DOCUMENTADO
+-- ======================================================
