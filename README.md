@@ -1,4 +1,4 @@
-## 🏪 Pedidos_Venta_BusinessCentral
+## 🏪 Pedidos Venta| Business Central
 
 🎇 Descripción 
 Base de datos relacional para gestionar **clientes, productos, pedidos y facturas**, simulando un mini-ERP tipo Business Central. Ideal para **aprender SQL, practicar joins y relaciones, y simular ventas** de manera rápida y didáctica.
